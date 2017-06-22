@@ -687,3 +687,5 @@ app.intent(REPEAT_ACTION,
     response.session('printed') = sprintf.apply(this, arguments);
     return sprintf.apply(this, arguments);
   }
+
+module.exports = app;
