@@ -14,7 +14,7 @@ const MIN = 0;
 const MAX = 100;
 const STEAM_SOUND_GAP = 5;
 const GAME_CONTEXT = 'game';
-const GENERATE_ANSWER_ACTION = 'generate_answer';
+const GENERATE_ANSWER_ACTION = 'start_game';
 const CHECK_GUESS_ACTION = 'check_guess';
 const QUIT_ACTION = 'quit';
 const PLAY_AGAIN_YES_ACTION = 'play_again_yes';
@@ -27,7 +27,9 @@ const YES_NO_CONTEXT = 'yes_no';
 const DONE_YES_NO_CONTEXT = 'done_yes_no';
 const DONE_YES_ACTION = 'done_yes';
 const DONE_NO_ACTION = 'done_no';
+
 const GUESS_ARGUMENT = 'guess';
+
 const REPEAT_ACTION = 'repeat';
 
 const HIGHER_HINT = 'higher';
@@ -37,10 +39,10 @@ const NO_HINT = 'none';
 const SSML_SPEAK_START = '<speak>';
 const SSML_SPEAK_END = '</speak>';
 
-const COLD_WIND_AUDIO = '<audio src="./audio/NumberGenieEarcon_ColdWind.wav"/>';
-const STEAM_ONLY_AUDIO = '<audio src="./audio/NumberGenieEarcon_SteamOnly.wav"/>';
-const STEAM_AUDIO = '<audio src="./audio/NumberGenieEarcons_Steam.wav"/>';
-const YOU_WIN_AUDIO = '<audio src="./audio/NumberGenieEarcons_YouWin.wav"/>';
+const COLD_WIND_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_ColdWind.wav"/>';
+const STEAM_ONLY_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_SteamOnly.wav"/>';
+const STEAM_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_Steam.wav"/>';
+const YOU_WIN_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_YouWin.wav"/>';
 
 const ANOTHER_GUESS_PROMPTS = ['What\'s your next guess?', 'Have another guess?', 'Try another.'];
 const LOW_PROMPTS = ['It\'s lower than %s.'];
@@ -110,35 +112,29 @@ const NO_INPUT_PROMPTS = ['I didn\'t hear a number', 'If you\'re still there, wh
 
 const REPEAT_PROMPTS = ['Sure. %s.', 'OK. %s.'];
 
-const IMAGE_BASE_URL = './images/';
+const IMAGE_BASE_URL = 'https://alexa-test-skill.herokuapp.com/images/';
 
 const IMAGE = {
-  COLD: { url: IMAGE_BASE_URL + 'COLD.gif', altText: 'cold genie', description: 'You\'re really far off!'},
-  COOL: { url: IMAGE_BASE_URL + 'COOL.gif', altText: 'cool genie', description: 'Try again!'},
-  HOT: { url: IMAGE_BASE_URL + 'HOT.gif', altText: 'hot genie', description: 'You\'re so close!'},
-  INTRO: { url: IMAGE_BASE_URL + 'INTRO.gif', altText: 'Mystical crystal ball', description: 'Welcome to Number Genie!'},
-  WARM: { url: IMAGE_BASE_URL + 'WARM.gif', altText: 'warm genie', description: 'You\'re getting closer!'},
-  WIN: { url: IMAGE_BASE_URL + 'WIN.gif', altText: 'celebrating genie', description: '🎉 Congratulations! 🎉'}
+  COLD: { url: IMAGE_BASE_URL + 'COLD.jpg', altText: 'cold genie', description: 'You\'re really far off!'},
+  COOL: { url: IMAGE_BASE_URL + 'COOL.jpg', altText: 'cool genie', description: 'Try again!'},
+  HOT: { url: IMAGE_BASE_URL + 'HOT.jpg', altText: 'hot genie', description: 'You\'re so close!'},
+  INTRO: { url: IMAGE_BASE_URL + 'INTRO.jpg', altText: 'Mystical crystal ball', description: 'Welcome to Number Genie!'},
+  WARM: { url: IMAGE_BASE_URL + 'WARM.jpg', altText: 'warm genie', description: 'You\'re getting closer!'},
+  WIN: { url: IMAGE_BASE_URL + 'WIN.jpg', altText: 'celebrating genie', description: '🎉 Congratulations! 🎉'}
 };
 
 // Utility function to pick prompts
-function getRandomPrompt (array) {
-  let lastPrompt = app.request.response.session('lastPrompt');
-  let prompt;
+function getRandomPrompt (response, array) {
+  let lastPrompt = response.session('lastPrompt');
+  let prompt = array[Math.floor(Math.random() * (array.length))];
   if (lastPrompt) {
-    for (let index in array) {
-      prompt = array[index];
-      if (prompt != lastPrompt) {
-        break;
-      }
-    }
-  } else {
-    prompt = array[Math.floor(Math.random() * (array.length))];
-  }
+    while ((lastPrompt.includes(prompt)) && array.length>1) {
+        prompt = array[Math.floor(Math.random() * (array.length))];
+      }}
   return prompt;
 }
 
-app.intent(GENERATE_ANSWER_ACTION,
+app.launch(
   function generateAnswer (request,response) {
     console.log('generateAnswer');
     let answer = getRandomNumber(MIN, MAX);
@@ -147,33 +143,38 @@ app.intent(GENERATE_ANSWER_ACTION,
     response.session('fallbackCount',0);
     response.session('steamSoundCount',0);
 
-    let title = getRandomPrompt(GREETING_PROMPTS);
-    let prompt = printf(title + ' ' +
-      getRandomPrompt(INVOCATION_PROMPT), MIN, MAX);
-      let basicCard = { 'type': 'Standard','title': IMAGE.INTRO.description, 'image': {'largeImageUrl': IMAGE.INTRO.url}, 'text':IMAGE.INTRO.altText };
+    let title = getRandomPrompt(response, GREETING_PROMPTS);
+    let prompt = printf(response, title + ' ' +
+      getRandomPrompt(response, INVOCATION_PROMPT), MIN, MAX);
+      let basicCard = { "type": "Standard","title": IMAGE.INTRO.description, "image": {"largeImageUrl": IMAGE.INTRO.url}, "text":IMAGE.INTRO.altText };
       ask(response, prompt, 1, basicCard);
     });
 
 app.intent(CHECK_GUESS_ACTION,
+       {"slots":{"numberslot":"NUMBER"}},
   function checkGuess (request,response) {
     console.log('checkGuess');
     let answer = response.session('answer');
-    let guess = parseInt(assistant.getArgument(GUESS_ARGUMENT));
+    let guess = parseInt(request.slot("numberslot"));
     let diff = Math.abs(guess - answer);
-    response.session('guessCount')++;
+    let guessCount = response.session('guessCount');
+    guessCount++;
+    response.session('guessCount',guessCount);
     response.session('fallbackCount',0);
     // Check for duplicate guesses
     if (response.session('previousGuess') && guess === response.session('previousGuess')) {
-      response.session('duplicateCount')++;
+      let duplicateCount = response.session('duplicateCount');
+      duplicateCount++;
+      response.session('duplicateCount',duplicateCount);
       if (response.session('duplicateCount') === 1) {
         if (!response.session('hint') || response.session('hint') === NO_HINT) {
-          ask(response, printf(getRandomPrompt(assistant, SAME_GUESS_PROMPTS_3), guess));
+          ask(response, printf(response, getRandomPrompt(response, SAME_GUESS_PROMPTS_3), guess));
         } else {
-          ask(response, printf(getRandomPrompt(assistant, SAME_GUESS_PROMPTS_1), guess, response.session('hint')));
+          ask(response, printf(response, getRandomPrompt(response, SAME_GUESS_PROMPTS_1), guess, response.session('hint')));
         }
         return;
       } else if (response.session('duplicateCount') === 2) {
-        assistant.tell(printf(getRandomPrompt(assistant, SAME_GUESS_PROMPTS_2), guess));
+        response.say(printf(response, getRandomPrompt(response, SAME_GUESS_PROMPTS_2), guess));
         return;
       }
     }
@@ -181,44 +182,28 @@ app.intent(CHECK_GUESS_ACTION,
     // Check if user isn't following hints
     if (response.session('hint')) {
       if (response.session('hint') === HIGHER_HINT && guess <= response.session('previousGuess')) {
-        let prompt = printf(getRandomPrompt(assistant, WRONG_DIRECTION_HIGHER_PROMPTS), response.session('previousGuess'));
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.COOL.description)
-            .setImage(IMAGE.COOL.url, IMAGE.COOL.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let prompt = printf(response, getRandomPrompt(response, WRONG_DIRECTION_HIGHER_PROMPTS), response.session('previousGuess'));
+        let basicCard = { "type": "Standard","title": IMAGE.COOL.description, "image": {"largeImageUrl": IMAGE.COOL.url}, "text":IMAGE.COOL.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       } else if (response.session('hint') === LOWER_HINT && guess >= response.session('previousGuess')) {
-        let prompt = printf(getRandomPrompt(assistant, WRONG_DIRECTION_LOWER_PROMPTS), response.session('previousGuess'));
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.COOL.description)
-            .setImage(IMAGE.COOL.url, IMAGE.COOL.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let prompt = printf(response, getRandomPrompt(response, WRONG_DIRECTION_LOWER_PROMPTS), response.session('previousGuess'));
+        let basicCard = { "type": "Standard","title": IMAGE.COOL.description, "image": {"largeImageUrl": IMAGE.COOL.url}, "text":IMAGE.COOL.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       }
     }
     // Handle boundaries with special prompts
     if (answer !== guess) {
       if (guess === MIN) {
-        response.session('hint = HIGHER_HINT');
-        response.session('previousGuess = guess');
-        ask(response, printf(getRandomPrompt(assistant, MIN_PROMPTS), MIN));
+        response.session('hint',HIGHER_HINT);
+        response.session('previousGuess',guess);
+        ask(response, printf(response, getRandomPrompt(response, MIN_PROMPTS), MIN));
         return;
       } else if (guess === MAX) {
-        response.session('hint = LOWER_HINT');
+        response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
-        ask(response, printf(getRandomPrompt(assistant, MAX_PROMPTS), MAX));
+        ask(response, printf(response, getRandomPrompt(response, MAX_PROMPTS), MAX));
         return;
       }
     }
@@ -229,35 +214,19 @@ app.intent(CHECK_GUESS_ACTION,
         response.session('hint',HIGHER_HINT);
         response.session('previousGuess',guess);
         let prompt = SSML_SPEAK_START + COLD_WIND_AUDIO +
-          printf(getRandomPrompt(assistant, REALLY_COLD_HIGH_PROMPTS), guess) +
+          printf(response, getRandomPrompt(response, REALLY_COLD_HIGH_PROMPTS), guess) +
           SSML_SPEAK_END;
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.COLD.description)
-            .setImage(IMAGE.COLD.url, IMAGE.COLD.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let basicCard = { "type": "Standard","title": IMAGE.COLD.description, "image": {"largeImageUrl": IMAGE.COLD.url}, "text":IMAGE.COLD.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       } else if (answer < guess) {
         response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
         let prompt = SSML_SPEAK_START + COLD_WIND_AUDIO +
-          printf(getRandomPrompt(assistant, REALLY_COLD_LOW_PROMPTS), guess) +
+          printf(response, getRandomPrompt(response, REALLY_COLD_LOW_PROMPTS), guess) +
           SSML_SPEAK_END;
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.COLD.description)
-            .setImage(IMAGE.COLD.url, IMAGE.COLD.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let basicCard = { "type": "Standard","title": IMAGE.COLD.description, "image": {"largeImageUrl": IMAGE.COLD.url}, "text":IMAGE.COLD.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       }
     } else if (diff === 4) {
@@ -265,32 +234,16 @@ app.intent(CHECK_GUESS_ACTION,
       if (answer > guess) {
         response.session('hint',NO_HINT);
         response.session('previousGuess',guess);
-        let prompt = getRandomPrompt(assistant, HIGH_CLOSE_PROMPTS);
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-            .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let prompt = getRandomPrompt(response, HIGH_CLOSE_PROMPTS);
+        let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       } else if (answer < guess) {
         response.session('hint',NO_HINT);
         response.session('previousGuess',guess);
-        let prompt = getRandomPrompt(assistant, LOW_CLOSE_PROMPTS);
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-            .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let prompt = getRandomPrompt(response, LOW_CLOSE_PROMPTS);
+        let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       }
     } else if (diff === 3) {
@@ -298,63 +251,33 @@ app.intent(CHECK_GUESS_ACTION,
       if (answer > guess) {
         response.session('hint',HIGHER_HINT);
         response.session('previousGuess',guess);
-        if (response.session('steamSoundCount')-- <= 0) {
+        
+        if (response.session('steamSoundCount') == 0) {
           response.session('steamSoundCount',STEAM_SOUND_GAP);
           let prompt = SSML_SPEAK_START + STEAM_ONLY_AUDIO +
-            printf(getRandomPrompt(assistant, HIGHEST_PROMPTS)) + SSML_SPEAK_END;
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+            printf(response, getRandomPrompt(response, HIGHEST_PROMPTS)) + SSML_SPEAK_END;
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
         } else {
-          let prompt = getRandomPrompt(assistant, HIGHEST_PROMPTS);
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+          let prompt = getRandomPrompt(response, HIGHEST_PROMPTS);
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
         }
         return;
       } else if (answer < guess) {
         response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
-        if (response.session('steamSoundCount')-- <= 0) {
+        if (response.session('steamSoundCount') == 0) {
           response.session('steamSoundCount',STEAM_SOUND_GAP);
           let prompt = SSML_SPEAK_START + STEAM_ONLY_AUDIO +
-            printf(getRandomPrompt(assistant, LOWEST_PROMPTS)) + SSML_SPEAK_END;
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+            printf(response, getRandomPrompt(response, LOWEST_PROMPTS)) + SSML_SPEAK_END;
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
         } else {
-          let prompt = getRandomPrompt(assistant, LOWEST_PROMPTS);
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+          // Rajouter steamSoundGap --
+          let prompt = getRandomPrompt(response, LOWEST_PROMPTS);
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
         }
         return;
       }
@@ -363,89 +286,49 @@ app.intent(CHECK_GUESS_ACTION,
       if (answer > guess) {
         response.session('hint',HIGHER_HINT);
         response.session('previousGuess',guess);
-        let prompt = printf(getRandomPrompt(assistant, HIGHER_PROMPTS), guess);
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.WARM.description)
-            .setImage(IMAGE.WARM.url, IMAGE.WARM.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let prompt = printf(response, getRandomPrompt(response, HIGHER_PROMPTS), guess);
+        let basicCard = { "type": "Standard","title": IMAGE.WARM.description, "image": {"largeImageUrl": IMAGE.WARM.url}, "text":IMAGE.WARM.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       } else if (answer < guess) {
         response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
-        let prompt = printf(getRandomPrompt(assistant, LOWER_PROMPTS), guess);
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.WARM.description)
-            .setImage(IMAGE.WARM.url, IMAGE.WARM.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+        let basicCard = { "type": "Standard","title": IMAGE.WARM.description, "image": {"largeImageUrl": IMAGE.WARM.url}, "text":IMAGE.WARM.altText };
+        ask(response, prompt, 1, basicCard);
         return;
       }
     }
+    
     // Give hints on which direction to go
     if (answer > guess) {
       let previousHint = response.session('hint');
-      response.session('hint = HIGHER_HINT');
+      response.session('hint',HIGHER_HINT);
       response.session('previousGuess',guess);
       if (previousHint && previousHint === HIGHER_HINT && diff <= 2) {
         // Very close to number
-        if (response.session('steamSoundCount')-- <= 0) {
-          response.session('steamSoundCount') = STEAM_SOUND_GAP;
+        if (response.session('steamSoundCount') == 0) {
+          response.session('steamSoundCount',STEAM_SOUND_GAP);
           let prompt = SSML_SPEAK_START + STEAM_AUDIO +
-            printf(getRandomPrompt(assistant, REALLY_HOT_HIGH_PROMPTS_2)) +
+            printf(response, getRandomPrompt(response, REALLY_HOT_HIGH_PROMPTS_2)) +
             SSML_SPEAK_END;
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
 
         } else {
           if (diff <= 1) {
-            let prompt = getRandomPrompt(assistant, REALLY_HOT_HIGH_PROMPTS_1);
-            if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-              let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-                .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-              let richResponse = assistant.buildRichResponse()
-                .addSimpleResponse(prompt)
-                .addBasicCard(basicCard);
-              ask(response, richResponse);
-            } else {
-              ask(response, prompt);
-            }
+            let prompt = getRandomPrompt(response, REALLY_HOT_HIGH_PROMPTS_1);
+            let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
           } else {
-            let prompt = getRandomPrompt(assistant, REALLY_HOT_HIGH_PROMPTS_2);
-            if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-              let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-                .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-              let richResponse = assistant.buildRichResponse()
-                .addSimpleResponse(prompt)
-                .addBasicCard(basicCard);
-              ask(response, richResponse);
-            } else {
-              ask(response, prompt);
-            }
+            let prompt = getRandomPrompt(response, REALLY_HOT_HIGH_PROMPTS_2);
+            let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
           }
         }
         return;
       } else {
-        ask(response, printf(getRandomPrompt(assistant, HIGH_PROMPTS) + ' ' +
-          getRandomPrompt(assistant, ANOTHER_GUESS_PROMPTS), guess));
+        ask(response, printf(response, getRandomPrompt(response, HIGH_PROMPTS) + ' ' +
+          getRandomPrompt(response, ANOTHER_GUESS_PROMPTS), guess));
         return;
       }
     } else if (answer < guess) {
@@ -454,51 +337,27 @@ app.intent(CHECK_GUESS_ACTION,
       response.session('previousGuess',guess);
       if (previousHint && previousHint === LOWER_HINT && diff <= 2) {
         // Very close to number
-        if (response.session('steamSoundCount')-- <= 0) {
+        if (response.session('steamSoundCount') == 0) {
           response.session('steamSoundCount',STEAM_SOUND_GAP);
           let prompt = SML_SPEAK_START + STEAM_AUDIO +
-            printf(getRandomPrompt(assistant, REALLY_HOT_LOW_PROMPTS_2)) + SSML_SPEAK_END;
-          if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-            let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-              .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-            let richResponse = assistant.buildRichResponse()
-              .addSimpleResponse(prompt)
-              .addBasicCard(basicCard);
-            ask(response, richResponse);
-          } else {
-            ask(response, prompt);
-          }
+            printf(response, getRandomPrompt(response, REALLY_HOT_LOW_PROMPTS_2)) + SSML_SPEAK_END;
+          let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+          ask(response, prompt, 1, basicCard);
         } else {
           if (diff <= 1) {
-            let prompt = getRandomPrompt(assistant, REALLY_HOT_LOW_PROMPTS_1);
-            if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-              let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-                .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-              let richResponse = assistant.buildRichResponse()
-                .addSimpleResponse(prompt)
-                .addBasicCard(basicCard);
-              ask(response, richResponse);
-            } else {
-              ask(response, prompt);
-            }
+            let prompt = getRandomPrompt(response, REALLY_HOT_LOW_PROMPTS_1);
+            let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+            ask(response, prompt, 1, basicCard);
           } else {
-            let prompt = getRandomPrompt(assistant, REALLY_HOT_LOW_PROMPTS_2);
-            if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-              let basicCard = assistant.buildBasicCard(IMAGE.HOT.description)
-                .setImage(IMAGE.HOT.url, IMAGE.HOT.altText);
-              let richResponse = assistant.buildRichResponse()
-                .addSimpleResponse(prompt)
-                .addBasicCard(basicCard);
-              ask(response, richResponse);
-            } else {
-              ask(response, prompt);
-            }
+            let prompt = getRandomPrompt(response, REALLY_HOT_LOW_PROMPTS_2);
+            let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
+            ask(response, prompt, 1, basicCard);
           }
         }
         return;
       } else {
-        ask(response, printf(getRandomPrompt(assistant, LOW_PROMPTS) + ' ' +
-          getRandomPrompt(assistant, ANOTHER_GUESS_PROMPTS), guess));
+        ask(response, printf(response, getRandomPrompt(response, LOW_PROMPTS) + ' ' +
+          getRandomPrompt(response, ANOTHER_GUESS_PROMPTS), guess));
         return;
       }
     } else {
@@ -506,49 +365,33 @@ app.intent(CHECK_GUESS_ACTION,
       let guessCount = response.session('guessCount');
       response.session('hint',NO_HINT);
       response.session('previousGuess',-1);
-      assistant.setContext(YES_NO_CONTEXT);
+      //assistant.setContext(YES_NO_CONTEXT);
       response.session('guessCount',0);
       if (guessCount >= 10) {
         let prompt = SSML_SPEAK_START + YOU_WIN_AUDIO +
-          printf(getRandomPrompt(assistant, MANY_TRIES_PROMPTS), answer) +
+          printf(response, getRandomPrompt(response, MANY_TRIES_PROMPTS), answer) +
           SSML_SPEAK_END;
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.WIN.description)
-            .setImage(IMAGE.WIN.url, IMAGE.WIN.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+          let basicCard = { "type": "Standard","title": IMAGE.WIN.description, "image": {"largeImageUrl": IMAGE.WIN.url}, "text":IMAGE.WIN.altText };
+          ask(response, prompt, 1, basicCard);
         return;
       } else {
         let prompt = SSML_SPEAK_START + YOU_WIN_AUDIO + 
-          printf(getRandomPrompt(assistant, CORRECT_GUESS_PROMPTS) + ' ' +
-          getRandomPrompt(assistant, PLAY_AGAIN_QUESTION_PROMPTS), answer) +
+          printf(response, getRandomPrompt(response, CORRECT_GUESS_PROMPTS) + ' ' +
+          getRandomPrompt(response, PLAY_AGAIN_QUESTION_PROMPTS), answer) +
           SSML_SPEAK_END;
-        if (assistant.hasSurfaceCapability(assistant.SurfaceCapabilities.SCREEN_OUTPUT)) {
-          let basicCard = assistant.buildBasicCard(IMAGE.WIN.description)
-            .setImage(IMAGE.WIN.url, IMAGE.WIN.altText);
-          let richResponse = assistant.buildRichResponse()
-            .addSimpleResponse(prompt)
-            .addBasicCard(basicCard);
-          ask(response, richResponse);
-        } else {
-          ask(response, prompt);
-        }
+          let basicCard = { "type": "Standard","title": IMAGE.WIN.description, "image": {"largeImageUrl": IMAGE.WIN.url}, "text":IMAGE.WIN.altText };
+          ask(response, prompt, 1, basicCard);
         return;
       }
-    }
+    } 
   });
 
 app.intent(QUIT_ACTION,
   function quit (request,response) {
     console.log('quit');
     let answer = response.session('answer');
-    assistant.tell(printf(getRandomPrompt(assistant, QUIT_REVEAL_PROMPTS) + ' '
-      + getRandomPrompt(assistant, QUIT_REVEAL_BYE), answer));
+    response.say(printf(response, getRandomPrompt(response, QUIT_REVEAL_PROMPTS) + ' '
+      + getRandomPrompt(response, QUIT_REVEAL_BYE), answer));
   });
 
 app.intent(PLAY_AGAIN_YES_ACTION,
@@ -559,133 +402,90 @@ app.intent(PLAY_AGAIN_YES_ACTION,
     response.session('guessCount',0);
     response.session('fallbackCount',0);
     response.session('steamSoundCount',0);
-    ask(response, printf(getRandomPrompt(assistant, RE_PROMPT) + ' ' +
-      getRandomPrompt(assistant, RE_INVOCATION_PROMPT), MIN, MAX));
+    ask(response, printf(response, getRandomPrompt(response, RE_PROMPT) + ' ' +
+      getRandomPrompt(response, RE_INVOCATION_PROMPT), MIN, MAX));
   });
 
 app.intent(PLAY_AGAIN_NO_ACTION,
   function playAgainNo (request,response) {
     console.log('playAgainNo');
-    assistant.setContext(GAME_CONTEXT, 1);
-    assistant.tell(printf(getRandomPrompt(assistant, QUIT_PROMPTS)));
+    //assistant.setContext(GAME_CONTEXT, 1);
+    response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
   });
 
-app.intent(DEFAULT_FALLBACK_ACTION,
-  function defaultFallback (request,response) {
-    console.log('defaultFallback: ' + response.session('fallbackCount'));
-    if (response.session('fallbackCount') === undefined) {
-      response.session('fallbackCount',0);
-    }
-    response.session('fallbackCount')++;
-    // Provide two prompts before ending game
-    if (response.session('fallbackCount') === 1) {
-      assistant.setContext(DONE_YES_NO_CONTEXT);
-      ask(response, printf(getRandomPrompt(assistant, FALLBACK_PROMPT_1)));
-    } else {
-      assistant.tell(printf(getRandomPrompt(assistant, FALLBACK_PROMPT_2)));
-    }
-  });
 
-app.intent(UNKNOWN_DEEPLINK_ACTION,
-  function unhandledDeeplinks (request,response) {
-    console.log('unhandledDeeplinks');
-    let answer = getRandomNumber(MIN, MAX);
-    response.session('answer',answer);
-    response.session('guessCount',0);
-    response.session('fallbackCount',0);
-    response.session('steamSoundCount',0);
-    assistant.setContext(GAME_CONTEXT, 1);
-    let text = assistant.getArgument(RAW_TEXT_ARGUMENT);
 
-    if (text) {
-      if (isNaN(text)) {
-        // Handle "talk to number genie about frogs" by counting
-        // number of letters in the word as the guessed number
-        let numberOfLetters = text.length;
-        if (numberOfLetters < answer) {
-          ask(response, getRandomPrompt(assistant, GREETING_PROMPTS) + ' ' +
-            printf(getRandomPrompt(assistant, DEEPLINK_PROMPT_1), text.toUpperCase(), numberOfLetters, numberOfLetters));
-        } else if (numberOfLetters > answer) {
-          ask(response, getRandomPrompt(assistant, GREETING_PROMPTS) + ' ' +
-            printf(getRandomPrompt(assistant, DEEPLINK_PROMPT_2), text.toUpperCase(), numberOfLetters, numberOfLetters));
-        } else {
-          response.session('hint',NO_HINT);
-          response.session('previousGuess',-1);
-          assistant.setContext(YES_NO_CONTEXT);
-          ask(response, SSML_SPEAK_START + YOU_WIN_AUDIO +
-            printf(getRandomPrompt(assistant, DEEPLINK_PROMPT_3) + ' ' +
-            getRandomPrompt(assistant, PLAY_AGAIN_QUESTION_PROMPTS), text.toUpperCase(), numberOfLetters, answer) + SSML_SPEAK_END);
-        }
-      } else {
-        // Easter egg to set the answer for demos
-        // Handle "talk to number genie about 55"
-        response.session('answer',parseInt(text));
-        assistant.ask(printf(getRandomPrompt(assistant, GREETING_PROMPTS) + ' ' +
-          getRandomPrompt(assistant, INVOCATION_PROMPT), MIN, MAX));
-      }
-    } else {
-      defaultFallback(assistant);
-    }
-  });
 
 app.intent(NUMBER_DEEPLINK_ACTION,
+       {"slots":{"numberslot":"NUMBER"}},
   function numberDeeplinks (request,response) {
     console.log('numberDeeplinks');
     response.session('guessCount',0);
     response.session('fallbackCount',0);
     response.session('steamSoundCount',0);
-    assistant.setContext(GAME_CONTEXT, 1);
-    let number = parseInt(assistant.getArgument(NUMBER_ARGUMENT));
+    //assistant.setContext(GAME_CONTEXT, 1);
+    let number = parseInt(request.slot("numberslot"));
     // Easter egg to set the answer for demos
     // Handle "talk to number genie about 55"
     response.session('answer',number);
-    assistant.ask(printf(getRandomPrompt(assistant, GREETING_PROMPTS) + ' ' +
-      getRandomPrompt(assistant, INVOCATION_PROMPT), MIN, MAX));
+    response.say(printf(response, getRandomPrompt(response, GREETING_PROMPTS) + ' ' +
+      getRandomPrompt(response, INVOCATION_PROMPT), MIN, MAX)).shouldEndSession(false);
   });
 
 app.intent(DONE_YES_ACTION,
   function doneYes (request,response) {
     console.log('doneYes');
-    assistant.setContext(GAME_CONTEXT, 1);
-    assistant.tell(printf(getRandomPrompt(assistant, QUIT_PROMPTS)));
+    //assistant.setContext(GAME_CONTEXT, 1);
+    response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
   });
 
 app.intent(DONE_NO_ACTION,
   function doneNo (request,response) {
     console.log('doneNo');
     response.session('fallbackCount',0);
-    ask(response, printf(getRandomPrompt(assistant, RE_PROMPT) + ' ' +
-      getRandomPrompt(assistant, ANOTHER_GUESS_PROMPTS)));
+    ask(response, printf(response, getRandomPrompt(response, RE_PROMPT) + ' ' +
+      getRandomPrompt(response, ANOTHER_GUESS_PROMPTS)));
   });
 
 app.intent(REPEAT_ACTION,
   function repeat (request,response) {
     console.log('repeat');
-    let lastPrompt = printf(response.session('printed'));
+    let lastPrompt = printf(response, response.session('printed'));
     if (lastPrompt) {
-      ask(response, printf(getRandomPrompt(assistant, REPEAT_PROMPTS), lastPrompt), false);
+      ask(response, printf(response, getRandomPrompt(response, REPEAT_PROMPTS), lastPrompt), false);
     } else {
-      ask(response, printf(getRandomPrompt(assistant, ANOTHER_GUESS_PROMPTS)), false);
+      ask(response, printf(response, getRandomPrompt(response, ANOTHER_GUESS_PROMPTS)), false);
     }
   });
 
-  function doPersist (persist) {
+function doPersist (persist, response) {
     if (persist === undefined || persist) {
       response.session('lastPrompt',response.session('previous'));
     }
-  }
+}
 
-  function ask (response, prompt, persist) {
+function ask (response, prompt, persist) {
     console.log('ask: ' + prompt);
-    doPersist(persist);
-    response.say(prompt).reprompt(NO_INPUT_PROMPTS).card(arguments[3]);
-  }
+    doPersist(persist, response);
+    console.log(arguments[3]);
+    if (arguments[3] != undefined) {
+      response.card(arguments[3]);
+    }
+    response.say(prompt).shouldEndSession(false,getRandomPrompt (response, NO_INPUT_PROMPTS));
+}
 
-  function printf(prompt) {
-    console.log('printf: ' + sprintf.apply(this, arguments));
-    response.session('previous') = prompt;
-    response.session('printed') = sprintf.apply(this, arguments);
-    return sprintf.apply(this, arguments);
-  }
+function printf(response, prompt) {
+    console.log(arguments);
+    let args = [];
+    for (let i=1;i in arguments;i++) {
+      args.push(arguments[i]);
+    }
+    let message = sprintf.apply(this, args);
+    console.log(prompt);
+    console.log('printf: ' + message);
+    response.session('previous',prompt);
+    response.session('printed',message);
+    return message;
+}
 
 module.exports = app;
