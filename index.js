@@ -39,10 +39,10 @@ const NO_HINT = 'none';
 const SSML_SPEAK_START = '<speak>';
 const SSML_SPEAK_END = '</speak>';
 
-const COLD_WIND_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_ColdWind.wav"/>';
-const STEAM_ONLY_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_SteamOnly.wav"/>';
-const STEAM_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_Steam.wav"/>';
-const YOU_WIN_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_YouWin.wav"/>';
+const COLD_WIND_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_ColdWind.mp3"/>';
+const STEAM_ONLY_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcon_SteamOnly.mp3"/>';
+const STEAM_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_Steam.mp3"/>';
+const YOU_WIN_AUDIO = '<audio src="https://alexa-test-skill.herokuapp.com/audio/NumberGenieEarcons_YouWin.mp3"/>';
 
 const ANOTHER_GUESS_PROMPTS = ['What\'s your next guess?', 'Have another guess?', 'Try another.'];
 const LOW_PROMPTS = ['It\'s lower than %s.'];
