@@ -14,23 +14,23 @@ const MIN = 0;
 const MAX = 100;
 const STEAM_SOUND_GAP = 5;
 const GAME_CONTEXT = 'game';
-const GENERATE_ANSWER_ACTION = 'start_game';
-const CHECK_GUESS_ACTION = 'check_guess';
-const QUIT_ACTION = 'quit';
-const PLAY_AGAIN_YES_ACTION = 'play_again_yes';
-const PLAY_AGAIN_NO_ACTION = 'play_again_no';
-const DEFAULT_FALLBACK_ACTION = 'input.unknown';
-const UNKNOWN_DEEPLINK_ACTION = 'deeplink.unknown';
-const NUMBER_DEEPLINK_ACTION = 'deeplink.number';
+const GENERATE_ANSWER_ACTION = 'Start_game';
+const CHECK_GUESS_ACTION = 'Provide_guess';
+const QUIT_ACTION = 'Quit_game';
+const PLAY_AGAIN_YES_ACTION = 'PlayAgainYes';
+const PLAY_AGAIN_NO_ACTION = 'Play_again_no';
+//const DEFAULT_FALLBACK_ACTION = 'input.unknown';
+//const UNKNOWN_DEEPLINK_ACTION = 'deeplink.unknown';
+const NUMBER_DEEPLINK_ACTION = 'Deep_link_number';
 const NUMBER_ARGUMENT = 'number';
 const YES_NO_CONTEXT = 'yes_no';
 const DONE_YES_NO_CONTEXT = 'done_yes_no';
-const DONE_YES_ACTION = 'done_yes';
-const DONE_NO_ACTION = 'done_no';
+const DONE_YES_ACTION = 'Done_yes';
+const DONE_NO_ACTION = 'Done_no';
 
 const GUESS_ARGUMENT = 'guess';
 
-const REPEAT_ACTION = 'repeat';
+const REPEAT_ACTION = 'Repeat';
 
 const HIGHER_HINT = 'higher';
 const LOWER_HINT = 'lower';
@@ -149,7 +149,21 @@ app.launch(
       let basicCard = { "type": "Standard","title": IMAGE.INTRO.description, "image": {"largeImageUrl": IMAGE.INTRO.url}, "text":IMAGE.INTRO.altText };
       ask(response, prompt, 1, basicCard);
     });
+app.intent(GENERATE_ANSWER_ACTION,
+  function generateAnswer (request,response) {
+    console.log('generateAnswer');
+    let answer = getRandomNumber(MIN, MAX);
+    response.session('answer',answer);
+    response.session('guessCount',0);
+    response.session('fallbackCount',0);
+    response.session('steamSoundCount',0);
 
+    let title = getRandomPrompt(response, GREETING_PROMPTS);
+    let prompt = printf(response, title + ' ' +
+      getRandomPrompt(response, INVOCATION_PROMPT), MIN, MAX);
+      let basicCard = { "type": "Standard","title": IMAGE.INTRO.description, "image": {"largeImageUrl": IMAGE.INTRO.url}, "text":IMAGE.INTRO.altText };
+      ask(response, prompt, 1, basicCard);
+    });
 app.intent(CHECK_GUESS_ACTION,
        {"slots":{"numberslot":"NUMBER"}},
   function checkGuess (request,response) {
