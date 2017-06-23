@@ -142,6 +142,7 @@ app.launch(
     response.session('guessCount',0);
     response.session('fallbackCount',0);
     response.session('steamSoundCount',0);
+    response.session('state',GAME_CONTEXT);
 
     let title = getRandomPrompt(response, GREETING_PROMPTS);
     let prompt = printf(response, title + ' ' +
@@ -149,6 +150,7 @@ app.launch(
       let basicCard = { "type": "Standard","title": IMAGE.INTRO.description, "image": {"largeImageUrl": IMAGE.INTRO.url}, "text":IMAGE.INTRO.altText };
       ask(response, prompt, 1, basicCard);
     });
+
 app.intent(GENERATE_ANSWER_ACTION,
   function generateAnswer (request,response) {
     console.log('generateAnswer');
@@ -167,7 +169,29 @@ app.intent(GENERATE_ANSWER_ACTION,
 app.intent(CHECK_GUESS_ACTION,
        {"slots":{"numberslot":"NUMBER"}},
   function checkGuess (request,response) {
+
+    if (response.session('state') == undefined) {
+      console.log('numberDeeplinks');
+      response.session('guessCount',0);
+      response.session('fallbackCount',0);
+      response.session('steamSoundCount',0);
+      response.session('state',GAME_CONTEXT);
+      let number = parseInt(request.slot("numberslot"));
+      // Easter egg to set the answer for demos
+      // Handle "talk to number genie about 55"
+      response.session('answer',number);
+      response.say(printf(response, getRandomPrompt(response, GREETING_PROMPTS) + ' ' +
+      getRandomPrompt(response, INVOCATION_PROMPT), MIN, MAX)).shouldEndSession(false);
+      return;
+    }
+
+    if (response.session('state') != GAME_CONTEXT) {
+      response.say("you\'re not supposed to say a number").shouldEndSession(false);
+      return;
+    }
+
     console.log('checkGuess');
+
     let answer = response.session('answer');
     let guess = parseInt(request.slot("numberslot"));
     let diff = Math.abs(guess - answer);
@@ -307,7 +331,7 @@ app.intent(CHECK_GUESS_ACTION,
       } else if (answer < guess) {
         response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
-        let prompt = printf(getRandomPrompt(assistant, LOWER_PROMPTS), guess);
+        let prompt = printf(response, getRandomPrompt(response, LOWER_PROMPTS), guess);
         let basicCard = { "type": "Standard","title": IMAGE.WARM.description, "image": {"largeImageUrl": IMAGE.WARM.url}, "text":IMAGE.WARM.altText };
         ask(response, prompt, 1, basicCard);
         return;
@@ -380,7 +404,7 @@ app.intent(CHECK_GUESS_ACTION,
       let guessCount = response.session('guessCount');
       response.session('hint',NO_HINT);
       response.session('previousGuess',-1);
-      //assistant.setContext(YES_NO_CONTEXT);
+      response.session('state',YES_NO_CONTEXT);
       response.session('guessCount',0);
       if (guessCount >= 10) {
         let prompt = SSML_SPEAK_START + YOU_WIN_AUDIO +
@@ -400,6 +424,8 @@ app.intent(CHECK_GUESS_ACTION,
       }
     } 
   });
+
+  
 
 app.intent(QUIT_ACTION,
   function quit (request,response) {
@@ -424,7 +450,7 @@ app.intent(PLAY_AGAIN_YES_ACTION,
 app.intent(PLAY_AGAIN_NO_ACTION,
   function playAgainNo (request,response) {
     console.log('playAgainNo');
-    //assistant.setContext(GAME_CONTEXT, 1);
+    response.session('state',GAME_CONTEXT);
     response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
   });
 
@@ -438,7 +464,7 @@ app.intent(NUMBER_DEEPLINK_ACTION,
     response.session('guessCount',0);
     response.session('fallbackCount',0);
     response.session('steamSoundCount',0);
-    //assistant.setContext(GAME_CONTEXT, 1);
+    response.session('state',GAME_CONTEXT);
     let number = parseInt(request.slot("numberslot"));
     // Easter egg to set the answer for demos
     // Handle "talk to number genie about 55"
@@ -450,7 +476,7 @@ app.intent(NUMBER_DEEPLINK_ACTION,
 app.intent(DONE_YES_ACTION,
   function doneYes (request,response) {
     console.log('doneYes');
-    //assistant.setContext(GAME_CONTEXT, 1);
+    response.session('state',GAME_CONTEXT);
     response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
   });
 
@@ -473,6 +499,67 @@ app.intent(REPEAT_ACTION,
     }
   });
 
+app.intent("AMAZON.YesIntent",
+  function (request, response){
+    if (response.session('state') == YES_NO_CONTEXT) {
+      console.log('playAgainYes');
+      let answer = getRandomNumber(MIN, MAX);
+      response.session('answer',answer);
+      response.session('guessCount',0);
+      response.session('fallbackCount',0);
+      response.session('steamSoundCount',0);
+      response.session('state',GAME_CONTEXT);
+      ask(response, printf(response, getRandomPrompt(response, RE_PROMPT) + ' ' +
+      getRandomPrompt(response, RE_INVOCATION_PROMPT), MIN, MAX));
+    } 
+    else if (response.session('state') == DONE_YES_NO_CONTEXT) {
+      console.log('doneYes');
+      response.session('state',GAME_CONTEXT);
+      response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
+    }
+    else {
+      console.log('unhandled yes')
+      response.say('Sure !').shouldEndSession(false);
+    }
+  });
+app.intent("AMAZON.NoIntent",
+  function (request, response) {
+    if (response.session('state') == YES_NO_CONTEXT) {
+      console.log('playAgainNo');
+      response.session('state',GAME_CONTEXT);
+      response.say(printf(response, getRandomPrompt(response, QUIT_PROMPTS)));
+    } 
+    else if (response.session('state') == DONE_YES_NO_CONTEXT) {
+      console.log('doneNo');
+      response.session('fallbackCount',0);
+      response.session('state',GAME_CONTEXT);
+      ask(response, printf(response, getRandomPrompt(response, RE_PROMPT) + ' ' +
+      getRandomPrompt(response, ANOTHER_GUESS_PROMPTS)));
+    }
+    else {
+      console.log('unhandled no')
+      response.say('Nay !').shouldEndSession(false);
+    }
+  });
+
+app.intent("Unhandled",
+  function defaultFallback (request, response) {
+    console.log('defaultFallback: ' + response.session('fallbackCount'));
+    if (response.session('fallbackCount') === undefined) {
+      response.session('fallbackCount',0);
+    }
+    let fallbackCount = response.session('fallbackCount');
+    fallbackCount++;
+    response.session('fallbackCount',fallbackCount);
+    // Provide two prompts before ending game
+    if (response.session('fallbackCount') === 1) {
+      response.session('state',DONE_YES_NO_CONTEXT);
+      ask(response, printf(response, getRandomPrompt(response, FALLBACK_PROMPT_1)));
+    } else {
+      response.say(printf(response, getRandomPrompt(response, FALLBACK_PROMPT_2)));
+    }
+  });
+
 function doPersist (persist, response) {
     if (persist === undefined || persist) {
       response.session('lastPrompt',response.session('previous'));
@@ -482,7 +569,6 @@ function doPersist (persist, response) {
 function ask (response, prompt, persist) {
     console.log('ask: ' + prompt);
     doPersist(persist, response);
-    console.log(arguments[3]);
     if (arguments[3] != undefined) {
       response.card(arguments[3]);
     }
@@ -490,7 +576,6 @@ function ask (response, prompt, persist) {
 }
 
 function printf(response, prompt) {
-    console.log(arguments);
     let args = [];
     for (let i=1;i in arguments;i++) {
       args.push(arguments[i]);
