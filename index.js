@@ -353,7 +353,7 @@ app.intent(CHECK_GUESS_ACTION,
         // Very close to number
         if (response.session('steamSoundCount') == 0) {
           response.session('steamSoundCount',STEAM_SOUND_GAP);
-          let prompt = SML_SPEAK_START + STEAM_AUDIO +
+          let prompt = SSML_SPEAK_START + STEAM_AUDIO +
             printf(response, getRandomPrompt(response, REALLY_HOT_LOW_PROMPTS_2)) + SSML_SPEAK_END;
           let basicCard = { "type": "Standard","title": IMAGE.HOT.description, "image": {"largeImageUrl": IMAGE.HOT.url}, "text":IMAGE.HOT.altText };
           ask(response, prompt, 1, basicCard);
