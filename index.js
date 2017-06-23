@@ -307,6 +307,7 @@ app.intent(CHECK_GUESS_ACTION,
       } else if (answer < guess) {
         response.session('hint',LOWER_HINT);
         response.session('previousGuess',guess);
+        let prompt = printf(getRandomPrompt(assistant, LOWER_PROMPTS), guess);
         let basicCard = { "type": "Standard","title": IMAGE.WARM.description, "image": {"largeImageUrl": IMAGE.WARM.url}, "text":IMAGE.WARM.altText };
         ask(response, prompt, 1, basicCard);
         return;
